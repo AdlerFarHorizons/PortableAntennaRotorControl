@@ -3,6 +3,7 @@
  */
 
 #include <TimeLib.h>
+#include <EEPROM.h>
 
 #define GPSLEN 100 //max length of GPS output to be sent
 #define APRSLEN 100 // max length of APRS message packet
@@ -18,9 +19,23 @@ const int azDrvPin = 18;
 const int azSgnPin = 19;
 const int ppsPin = 6;
 const int updatePer = 1000;
-const int eepromAddrStart = 256;
-const int syncTimeOffset = 0;
 const float xtalTol = 20e-6;
+const float maxTimeTol = 0.5; // seconds
+const long maxTimeSyncAge = (long)( 0.5 + maxTimeTol / xtalTol );
+
+/*
+ * Set addresses of EEPROM parameters 
+ */
+const int eeaddrStart = 256;
+const int eeaddrLastGPSTimeSync = eeaddrStart; // time_t
+const int eeaddrAzPotEast = eeaddrLastGPSTimeSync + sizeof( time_t );
+const int eeaddrAzPotWest = eeaddrAzPotEast + sizeof( int );
+const int eeaddrAzPotMin = eeaddrAzPotWest + sizeof( int );
+const int eeaddrAzPotMax = eeaddrAzPotMin + sizeof( int );
+const int eeaddrElPot0 = eeaddrAzPotMax + sizeof( int );
+const int eeaddrElPot45 = eeaddrElPot0 + sizeof( int );
+
+ /*
  * Copernicus II configured for two NMEA sentences every 60 seconds:
  *  ZDA:Provides nothing until first fix, then provides full date
  *      based on internal clock until reset. Clock synced to true
@@ -30,6 +45,7 @@ const float xtalTol = 20e-6;
  *      UTC.
  */
 const String gpsConfStr = "$PTNLSNM,0220,60*50\r\n";
+
 String callSgn1 = "KC9LHW-11";
 String callSgn2 = "KC9LIG-11";
 String callSgn3 = "WB9SKY-11";
@@ -40,21 +56,23 @@ int gpsIndex = 0;
 boolean gpsRdy, gpsZDAFlg, gpsTFFlg, gpsChkFlg, gpsErrFlg;
 boolean gpsPosValid, gpsMsgFlg, gpsTimeFlg, gpsTimeValid;
 byte gpsChk;
-float lat, lon, alt;
-long syncTime;
+float gpsLat, gpsLon, gpsAlt;
+int gpsYr, gpsMon, gpsDay, gpsHr, gpsMin, gpsSec;
 
 char aprs[APRSLEN], aprsBuf[APRSLEN];
 int aprsIndex = 0;
 boolean aprsRdy, aprsChkFlg, aprsErrFlg, aprsBufCurrent, aprsValid;
+boolean aprsFlg;
+float aprsLat, aprsLon, aprsAlt, aprsVg, aprsHdg;
 
 char term[TERMLEN], aprsfiBuf[APRSFILEN], cmdBuf[CMDLEN];
 int termIndex = 0;
 boolean termRdy, termChkFlg, termErrFlg, termBufCurrent, termValid;
 boolean aprsfiPending, cmdPending, aprsfiBufCurrent, cmdBufCurrent;
 boolean cmdRdy, aprsfiRdy;
-boolean updateFlg;
+float apfiLat, apfiLon, apfiAlt, apfiVg, apfiHdg;
 
-int gpsYr, gpsMon, gpsDay, gpsHr, gpsMin, gpsSec;
+boolean rotorUpdateFlg;
 
 IntervalTimer updateTimer;
 
@@ -66,26 +84,32 @@ void setup() {
   pinMode( ppsPin, INPUT );
   gpsMsgFlg = false;
   gpsRdy = true;
-  updateFlg = false;
+  aprsBufCurrent = true;
+  rotorUpdateFlg = false;
   cmdRdy = false;
   cmdBufCurrent = true;
   setSyncProvider( getTeensy3Time );
-  Serial.begin( 9600 ); // Monitor and aprs.fi packets
+  Serial.begin( 115200 ); // Monitor and aprs.fi packets
   Serial1.begin( 9600 ); // APRS
   Serial2.begin( 9600 ); // GPS
   while( !Serial || !Serial1 || !Serial2 );
-  delay( 100 );
-  //Send GPS Configuration messages
-  digitalClockDisplay();
   delay( 1000 ); //Wait for GPS to power up.
   // Clear out GPS receive buffer
   while( Serial2.available() ) Serial2.read();
+  // Send GPS Configuration messages
   gpsConfig();
-  delay( 1000 ); 
+  delay( 1000 );
+  // Get GPS response 
   while( Serial2.available() ) {
     Serial.write( Serial2.read() ); 
   }
   Serial.println( "" );
+  
+  /*
+   * Sync library time to RTC. Default is 5 minutes.
+   * This is too long.
+   */
+  setSyncInterval( 10 );
   
   attachInterrupt( ppsPin, ppsSvc, RISING );
 }
@@ -100,20 +124,18 @@ void loop() {
   if ( Serial1.available() ) getAPRSByte();
   if ( Serial2.available() ) getGPSByte();
 
-//  if ( !aprsBufCurrent ) updateAPRSBuffer();
+  if ( !aprsBufCurrent ) updateAPRSBuffer();
 //  if ( !aprsfiBufCurrent ) updateAPRSfiBuffer();
 //  if ( cmdBufCurrent ) {
 //    cmdBufCurrent = false;
 //    Serial.println( "Command" );
 //  }
-//  if ( termRdy && aprsRdy ) {
-//    if ( aprsfiPending ) {
-//      aprsfiPending = false;
-//      Serial.println( "processing aprsfi" );
-//    }
-//    termRdy = false;
-//  }
-//  if ( updateFlg ) setRotors();
+  if ( aprsFlg ) {
+    if ( DEBUG ) Serial.print( "APRS msg rcvd" );
+    aprsFlg = false;
+    procAprs();
+  }
+  if ( rotorUpdateFlg ) updateRotors();
 //  if ( gpsRdy ) updateLocal();
 //  if ( aprsRdy ) updateRemote();
   
@@ -130,6 +152,7 @@ void getGPSByte() {
   if ( c == '*' ) { // '*' indicates end of GPS sentence
     gpsChkFlg = true;
     if ( DEBUG ) {
+
       if ( DEBUG ) Serial.println( gps );
     }
   }
@@ -201,11 +224,11 @@ void procZDAMsg() {
     }
     if ( gpsPosValid ) {
       // Get position, velocity data
-      lat = getField( gpsTF, 6, ',' ).toFloat();
-      if ( getField( gpsTF, 7, ',' ) == 'S' ) lat *= -1.0;
-      lon = getField( gpsTF, 8, ',' ).toFloat();
-      if ( getField( gpsTF, 9, ',' ) == 'W' ) lon *= -1.0;
-      alt = getField( gpsTF, 10, ',' ).toFloat();
+      gpsLat = getField( gpsTF, 6, ',' ).toFloat();
+      if ( getField( gpsTF, 7, ',' ) == 'S' ) gpsLat *= -1.0;
+      gpsLon = getField( gpsTF, 8, ',' ).toFloat();
+      if ( getField( gpsTF, 9, ',' ) == 'W' ) gpsLon *= -1.0;
+      gpsAlt = getField( gpsTF, 10, ',' ).toFloat();
     }
     gpsTFFlg = false;
   }
@@ -236,12 +259,18 @@ void getAPRSByte() {
       if ( DEBUG ) Serial.println( aprs );
     }
   } else {
-    if ( DEBUG && aprsRdy ) Serial.println( "APRS msg started..." );
+    if ( aprsRdy ) {
+      if ( DEBUG ) Serial.println( "APRS msg started..." );
+      aprsRdy = false;
+    }
+  }
+
+  if ( !aprsRdy ) {
     aprs[aprsIndex] = c;
-    aprsRdy = false;
     aprsIndex++;
     aprs[aprsIndex] = 0;
   }
+
 }
 
 void updateAPRSBuffer() {
@@ -250,7 +279,9 @@ void updateAPRSBuffer() {
     }
     aprsBufCurrent = true;
     if ( DEBUG ) Serial.println( "APRS Buffer updated." );
+    aprsFlg = true;
 }
+
 
 void getTermByte() {
   char c = Serial.read();
@@ -303,10 +334,6 @@ void updateCmdBuffer() {
     if ( DEBUG ) Serial.println( "cmd Buffer updated." );
 }
 
-void setRotors() {
-  
-}
-
 void updateLocal() {
   
 }
@@ -346,15 +373,24 @@ void ppsSvc() {
   if ( DEBUG ) {
     Serial.print( "." );
   }
+  rotorUpdateFlg = true;
 
   // Set clock(s) to UTC time if a valid fix came in since the last PPS
+  if ( DEBUG ) digitalClockDisplay();
   if ( gpsTimeValid && gpsTimeFlg ) {
-    setTime( gpsHr,gpsMin,gpsSec,gpsDay,gpsMon,gpsYr ); // "Library" time
-    setTime( now() + 1 );
-    Teensy3Clock.set( now() ); // Teensy RTC
-    if ( DEBUG ) {
-      Serial.print( "Time Corrected:" );
-      digitalClockDisplay();
+    time_t oldTime = getTeensy3Time();
+    setTime( gpsHr,gpsMin,gpsSec,gpsDay,gpsMon,gpsYr ); // "Library" time    
+    time_t newTime = now() + 1;
+    setTime( newTime );
+    Teensy3Clock.set( newTime ); // Teensy RTC
+    time_t temp;
+    EEPROM.get(  eeaddrLastGPSTimeSync, temp );
+    if ( ( abs( oldTime - newTime ) >= 1 || 
+         ( newTime - temp ) >= maxTimeSyncAge ) ) {
+      EEPROM.put( eeaddrLastGPSTimeSync, newTime );
+      if ( DEBUG ) {
+        Serial.print( "Time Corrected:" );      
+      }
     }
   }
 
@@ -366,5 +402,19 @@ void ppsSvc() {
   gpsTFFlg = false;
 }
 
+void procAprs() {
+  /* Check msg is proper APRS msg from a monitored call sign,
+     not some other output from TNC */
+  /* Extract parameters and add timestamp it if time not available */
+}
 
+void estTargetPosition() {
+  // get last measured position and time
+  // extrapolate using velocity and possibly acceleration
+}
+
+void updateRotors() {
+  
+  
+}
 
