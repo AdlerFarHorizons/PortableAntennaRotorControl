@@ -21,10 +21,18 @@ class aprs{
 		aprs(String validCallsigns);
 		String getCallsign();
     boolean giveAprsString(String aprsString);
+    float getLatitude();
+    float getLongitude();
+    long getAltitude();
 	private:
 		String _calls; //TODO: valid callsigns check
     String _aprsString;
     String _callsign;
+    float _latitude;
+    float _longitude;
+
+    String _altString;
+    long _alt;
 		
 };
 #endif
