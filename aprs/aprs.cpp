@@ -1,10 +1,13 @@
 #include "aprs.h"
+//===========================================================
 aprs::aprs(String validCallsigns){ 
 	_calls = validCallsigns;
 }
+//===========================================================
 String aprs::getCallsign(){
 	return _callsign;
 }
+//============================================================
 float aprs::getLatitude(){
    if(_latitude != NULL){
      return _latitude; 
@@ -27,6 +30,7 @@ float aprs::getLatitude(){
   }
   return _latitude;
 }
+//============================================================
 long aprs::getAltitude(){
   if(_alt != NULL){ //skip processing if we previously calculated the altutide
     return _alt;  
@@ -44,6 +48,7 @@ long aprs::getAltitude(){
   }
   return _alt;
 }
+//============================================================
 float aprs::getLongitude(){
   if(_longitude != NULL){
     return _longitude;  
@@ -64,6 +69,67 @@ float aprs::getLongitude(){
   }
   return _longitude;
 }
+
+//==========================================================
+int aprs::getGroundspeed(){
+  if(_groundspeed != NULL){
+    return _groundspeed;  
+  }
+  char searcher[7];
+
+  //get groups of 7
+  for(int i = _aprsString.indexOf(':'); i < _aprsString.length()-5; i++){
+    for(int j = 0; j < 7; j++){
+      searcher[j] = _aprsString[i+j];
+    }
+
+    _course = 0;
+    // the brute force versionto check if that group matches our ###/### pattern
+    //ASCII 48-57
+    boolean flag = true;
+    flag = flag && (searcher[0] < 58 && searcher[0] > 47);
+    flag = flag && (searcher[1] < 58 && searcher[1] > 47);
+    flag = flag && (searcher[2] < 58 && searcher[2] > 47);
+    flag = flag && (searcher[3] == '/');
+    flag = flag && (searcher[4] < 58 && searcher[4] > 47);
+    flag = flag && (searcher[5] < 58 && searcher[5] > 47);
+    flag = flag && (searcher[6] < 58 && searcher[6] > 47);
+    if(flag){
+      return ((String) searcher).substring(0,3).toInt();  //yea... we're assuming that this must happen. Bad code.
+    }
+  }
+}
+
+//GET COURSE (HEADING)========================================
+int aprs::getCourse(){
+  if(_course != NULL){
+    return _course;  
+  }
+  char searcher[7];
+  for(int i = _aprsString.indexOf(':'); i < _aprsString.length()-5; i++){
+    for(int j = 0; j < 7; j++){
+      searcher[j] = _aprsString[i+j];
+    }
+
+
+    for(int k = 0; k<7;k++){
+      if( k < 3 && (searcher[k] >=57 || searcher[k] <= 48)){
+          break;
+      }
+      if(k==3 && searcher[k] !=47){
+          break;
+      }
+      if(k>3 && (searcher[k] >= 57 || searcher[k] <=48)){
+        String returner = (String) searcher[0];
+        returner += (String) searcher[1];
+        returner += (String) searcher[2];
+        _course = returner.toInt();
+        return _course;
+      }
+    }
+  }
+}
+//============================================================
 boolean aprs::giveAprsString(String aprsString){
   _aprsString = aprsString;
   _callsign = _aprsString.substring(0,_aprsString.indexOf('-'));

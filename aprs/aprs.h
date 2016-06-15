@@ -24,12 +24,17 @@ class aprs{
     float getLatitude();
     float getLongitude();
     long getAltitude();
+    int getGroundspeed();
+    int getCourse();
 	private:
 		String _calls; //TODO: valid callsigns check
     String _aprsString;
     String _callsign;
     float _latitude;
     float _longitude;
+    int _heading;
+    int _groundspeed;
+    int _course;
 
     String _altString;
     long _alt;
