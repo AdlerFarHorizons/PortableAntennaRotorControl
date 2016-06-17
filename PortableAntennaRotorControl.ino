@@ -46,9 +46,8 @@ const int eeaddrElPot45 = eeaddrElPot0 + sizeof( int );
  */
 const String gpsConfStr = "$PTNLSNM,0220,60*50\r\n";
 
-String callSgn1 = "KC9LHW-11";
-String callSgn2 = "KC9LIG-11";
-String callSgn3 = "WB9SKY-11";
+const char* callSgns[] = { "KC9LHW", "KC9LIG", "WB9SKY" };
+int numCallSgns = sizeof( callSgns ) / sizeof( callSgns[0] );
 String cmdStr = "cmd:";
 
 char gps[GPSLEN], gpsBuf[GPSLEN], gpsZDA[GPSLEN], gpsTF[GPSLEN]; 
@@ -282,7 +281,6 @@ void updateAPRSBuffer() {
     aprsFlg = true;
 }
 
-
 void getTermByte() {
   char c = Serial.read();
   if ( ( c == '\n' || c == '\r' ) && !termRdy ) { // End of term msg
@@ -306,7 +304,7 @@ void getTermByte() {
     term[termIndex] = 0;
     if ( !aprsfiPending && !cmdPending ) {
       String temp = (String)term;
-      if ( temp == callSgn1 || temp == callSgn2 || temp == callSgn3 ) {
+      if ( temp == callSgns[0] || temp == callSgns[1] || temp == callSgns[2] ) {
         aprsfiPending = true;
         if ( DEBUG ) Serial.println( "aprsfiPending" );
       }
@@ -413,8 +411,7 @@ void estTargetPosition() {
   // extrapolate using velocity and possibly acceleration
 }
 
-void updateRotors() {
-  
+void updateRotors() {  
   
 }
 
