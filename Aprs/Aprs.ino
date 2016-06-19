@@ -4,7 +4,7 @@ void setup(){
 }
 Aprs myAprs = Aprs("WB9SKY,KC9LIG,KC9LHW"); //TODO: callsign matching
 void loop(){
-  myAprs.giveAprsString("WB9SKY-11>APBL10,N9IO*,WIDE2-1:!4106.07N/08755.13WO317/125/A=125243Adler High Altitude Balloon");
+  myAprs.putAprsString("WB9SKY-11>APBL10,N9IO*,WIDE2-1:!4106.07N/08755.13WO317/125/A=125243Adler High Altitude Balloon");
 
   //getCallsign: returns a String
   Serial.print("Callsign: ");

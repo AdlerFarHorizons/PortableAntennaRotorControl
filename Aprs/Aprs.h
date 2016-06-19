@@ -20,7 +20,7 @@ class Aprs{
 	public:
 		Aprs(String validCallsigns);
 		String getCallsign();
-    boolean giveAprsString(String aprsString);
+    boolean putAprsString(String aprsString);
     float getLatitude();
     float getLongitude();
     long getAltitude();

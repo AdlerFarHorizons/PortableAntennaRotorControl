@@ -130,7 +130,7 @@ int Aprs::getCourse(){
   }
 }
 //============================================================
-boolean Aprs::giveAprsString(String aprsString){
+boolean Aprs::putAprsString(String aprsString){
   _aprsString = aprsString;
   _callsign = _aprsString.substring(0,_aprsString.indexOf('-'));
   //TODO: check the callsigns before proceding
