@@ -1,4 +1,4 @@
-NOTE: USE Arduino 1.6.9! 1.6.5 doesn't work.
+NOTE: USE Arduino 1.6.9 1.6.5 doesn't work.
 aprs library
 
 ==============================
