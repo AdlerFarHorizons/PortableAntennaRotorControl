@@ -8,17 +8,17 @@
  * --KD9BVO
   */
 
-#ifndef aprs_h
-#define aprs_h
+#ifndef Aprs_h
+#define Aprs_h
 #if ARDUINO < 100
     #include <WProgram.h>
 #else
     #include <Arduino.h>
 #endif
 
-class aprs{
+class Aprs{
 	public:
-		aprs(String validCallsigns);
+		Aprs(String validCallsigns);
 		String getCallsign();
     boolean giveAprsString(String aprsString);
     float getLatitude();

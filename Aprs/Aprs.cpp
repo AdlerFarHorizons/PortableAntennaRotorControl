@@ -1,14 +1,14 @@
-#include "aprs.h"
+#include "Aprs.h"
 //===========================================================
-aprs::aprs(String validCallsigns){ 
+Aprs::Aprs(String validCallsigns){ 
 	_calls = validCallsigns;
 }
 //===========================================================
-String aprs::getCallsign(){
+String Aprs::getCallsign(){
 	return _callsign;
 }
 //============================================================
-float aprs::getLatitude(){
+float Aprs::getLatitude(){
    if(_latitude != NULL){
      return _latitude; 
    }
@@ -31,7 +31,7 @@ float aprs::getLatitude(){
   return _latitude;
 }
 //============================================================
-long aprs::getAltitude(){
+long Aprs::getAltitude(){
   if(_alt != NULL){ //skip processing if we previously calculated the altutide
     return _alt;  
   }
@@ -49,7 +49,7 @@ long aprs::getAltitude(){
   return _alt;
 }
 //============================================================
-float aprs::getLongitude(){
+float Aprs::getLongitude(){
   if(_longitude != NULL){
     return _longitude;  
   }
@@ -71,7 +71,7 @@ float aprs::getLongitude(){
 }
 
 //==========================================================
-int aprs::getGroundspeed(){
+int Aprs::getGroundspeed(){
   if(_groundspeed != NULL){
     return _groundspeed;  
   }
@@ -101,7 +101,7 @@ int aprs::getGroundspeed(){
 }
 
 //GET COURSE (HEADING)========================================
-int aprs::getCourse(){
+int Aprs::getCourse(){
   if(_course != NULL){
     return _course;  
   }
@@ -130,7 +130,7 @@ int aprs::getCourse(){
   }
 }
 //============================================================
-boolean aprs::giveAprsString(String aprsString){
+boolean Aprs::giveAprsString(String aprsString){
   _aprsString = aprsString;
   _callsign = _aprsString.substring(0,_aprsString.indexOf('-'));
   //TODO: check the callsigns before proceding

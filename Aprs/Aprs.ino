@@ -1,8 +1,8 @@
-#include "aprs.h"
+#include "Aprs.h"
 void setup(){
   Serial.begin(115200);
 }
-aprs myAprs = aprs("WB9SKY,KC9LIG,KC9LHW"); //TODO: callsign matching
+Aprs myAprs = Aprs("WB9SKY,KC9LIG,KC9LHW"); //TODO: callsign matching
 void loop(){
   myAprs.giveAprsString("WB9SKY-11>APBL10,N9IO*,WIDE2-1:!4106.07N/08755.13WO317/125/A=125243Adler High Altitude Balloon");
 
