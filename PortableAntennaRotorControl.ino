@@ -1,10 +1,11 @@
 /*
  * This program is for Teensy 3
+ * Requires Arduino 1.6.8+ and compatible Teensyduino
  */
 
 #include <TimeLib.h>
 #include <EEPROM.h>
-
+#include "Aprs/Aprs.h"
 #define GPSLEN 100 //max length of GPS output to be sent
 #define APRSLEN 100 // max length of APRS message packet
 #define TERMLEN 100 // max length of terminal message
