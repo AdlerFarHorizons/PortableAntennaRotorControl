@@ -76,7 +76,14 @@ boolean cmdRdy, aprsfiRdy;
 float apfiLat, apfiLon, apfiAlt, apfiVg, apfiHdg;
 
 boolean targetValid;
-float target[6];
+
+long  targetTime; 
+float targetPosX; //lon
+float targetPosY; //lat
+float targetPosZ; //alt
+float targetVelX;
+float targetVelY;
+float targetVelZ;
 
 Aprs aprsObj = Aprs( "WB9SKY,KC9LIG,KC9LHW" );
 
@@ -447,38 +454,45 @@ void updateTarget() {
   if ( aprsNewFlg ) {
     if ( DEBUG ) Serial.println( "APRS target update" );
     // Set prior target state to new APRS data
-    target[0] = aprsTime;
+    targetTime = aprsTime;
     // Initialization for computed derivatives on first valid APRS fix
     if ( targetValid ) {
-      target[6] = ( aprsAlt - lastAprsAlt ) / ( aprsTime - lastAprsTime );
+      targetVelZ = ( aprsAlt - lastAprsAlt ) / ( aprsTime - lastAprsTime );
     } else {
-      target[6] = 0.0;
+      targetVelZ = 0.0;
       targetValid = true;
     }
-    target[1] = aprsLon;
-    target[2] = aprsLat;
-    target[3] = aprsAlt;
-    target[4] = aprsVg * cos( aprsHdg * deg2rad ) * cos( aprsLat * deg2rad );
-    target[5] = aprsVg * sin( aprsHdg * deg2rad );
-    lastAprsTime = aprsTime;
+    targetPosX = aprsLon;
+    targetPosY = aprsLat;
+    targetPosZ = aprsAlt;
+    targetVelX = aprsVg * cos( aprsHdg * deg2rad ) * cos( aprsLat * deg2rad );
+    targetVelY = aprsVg * sin( aprsHdg * deg2rad );
+    targetVelZ = ( aprsAlt - lastAprsAlt ) / ( targetTime - lastAprsTime );
+    lastAprsTime = targetTime;
     lastAprsAlt = aprsAlt;
     aprsNewFlg = false;
   }
 
   // Update target state 
   if ( targetValid ) {
-    float temp = target[0]; // old time  
-    target[0] = float(now()); 
-    temp = target[0] - temp; // delta t
-    target[1] += ( target[4] * temp );
-    target[2] += ( target[5] * temp );
-    target[3] += ( target[6] * temp );
+    long temp = targetTime; // old time, same as lastAprsTime??
+    targetTime = now(); 
+    temp = targetTime - temp; // delta t
+    targetPosX += ( targetVelX * temp );
+    targetPosY += ( targetVelY * temp );
+    targetPosZ += ( targetVelZ * temp );
   }
-//  for ( int i = 0 ; i < 6 ; i++ ) {
-//    Serial.print( target[i] );
-//    Serial.print( ":" );
-//  }
-//  Serial.println( "" );
+
+  //FOR DEBUG PURPOSES
+  Serial.println(targetPosX);
+  Serial.println(targetPosY);
+  Serial.println(targetPosZ);
+  Serial.println(targetVelX);
+  Serial.println(targetVelY);
+  Serial.println(targetVelZ);
+  Serial.println(lastAprsTime);
+  Serial.println(targetTime);
+  
 }
 
 
