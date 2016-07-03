@@ -83,7 +83,6 @@ int Aprs::getGroundspeed(){
       searcher[j] = _aprsString[i+j];
     }
 
-    _course = 0;
     // the brute force versionto check if that group matches our ###/### pattern
     //ASCII 48-57
     boolean flag = true;
@@ -95,7 +94,8 @@ int Aprs::getGroundspeed(){
     flag = flag && (searcher[5] < 58 && searcher[5] > 47);
     flag = flag && (searcher[6] < 58 && searcher[6] > 47);
     if(flag){
-      return ((String) searcher).substring(0,3).toInt();  //yea... we're assuming that this must happen. Bad code.
+      _groundspeed = ((String) searcher).substring(4,7).toInt();  //yea... we're assuming that this must happen. Bad code.
+      return _groundspeed;
     }
   }
 }
@@ -111,21 +111,19 @@ int Aprs::getCourse(){
       searcher[j] = _aprsString[i+j];
     }
 
-
-    for(int k = 0; k<7;k++){
-      if( k < 3 && (searcher[k] >=57 || searcher[k] <= 48)){
-          break;
-      }
-      if(k==3 && searcher[k] !=47){
-          break;
-      }
-      if(k>3 && (searcher[k] >= 57 || searcher[k] <=48)){
-        String returner = (String) searcher[0];
-        returner += (String) searcher[1];
-        returner += (String) searcher[2];
-        _course = returner.toInt();
-        return _course;
-      }
+    // the brute force versionto check if that group matches our ###/### pattern
+    //ASCII 48-57
+    boolean flag = true;
+    flag = flag && (searcher[0] < 58 && searcher[0] > 47);
+    flag = flag && (searcher[1] < 58 && searcher[1] > 47);
+    flag = flag && (searcher[2] < 58 && searcher[2] > 47);
+    flag = flag && (searcher[3] == '/');
+    flag = flag && (searcher[4] < 58 && searcher[4] > 47);
+    flag = flag && (searcher[5] < 58 && searcher[5] > 47);
+    flag = flag && (searcher[6] < 58 && searcher[6] > 47);
+    if(flag){
+      _course = ((String)searcher).substring(0,3).toInt();  //yea... we're assuming that this must happen. Bad code.
+      return _course;
     }
   }
 }
