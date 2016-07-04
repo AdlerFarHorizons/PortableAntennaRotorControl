@@ -132,6 +132,13 @@ boolean Aprs::putAprsString(String aprsString){
   _aprsString = aprsString;
   _callsign = _aprsString.substring(0,_aprsString.indexOf('-'));
   //TODO: check the callsigns before proceding
+
+  _latitude = NULL;
+  _longitude = NULL;
+  _groundspeed = NULL;
+  _course = NULL;
+  _alt = NULL;
+
   return true;  
 
   //TODO: return false if input is not a valid APRS sentence

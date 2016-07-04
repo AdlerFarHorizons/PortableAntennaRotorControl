@@ -32,7 +32,6 @@ class Aprs{
     String _callsign;
     float _latitude;
     float _longitude;
-    int _heading;
     int _groundspeed;
     int _course;
 
