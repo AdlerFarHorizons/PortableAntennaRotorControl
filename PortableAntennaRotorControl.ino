@@ -211,7 +211,7 @@ void updateGPSMsg() {
     Serial.print( "GPS Flags:" );Serial.print( gpsTFFlg );
     Serial.println( gpsZDAFlg );
   }
-  digitalClockDisplay();
+  digitalClockDisplay(now());
 }
 
 void procZDAMsg() {
@@ -361,19 +361,19 @@ time_t getTeensy3Time()
   return Teensy3Clock.get();
 }
 
-void digitalClockDisplay() {
+void digitalClockDisplay(time_t t) {
   // digital clock display of the time
-  int hr = hour();
+  int hr = hour(t);
   if ( hr < 10 ) Serial.print( '0' );
   Serial.print(hr);
-  printDigits(minute());
-  printDigits(second());
+  printDigits(minute(t));
+  printDigits(second(t));
   Serial.print(" ");
-  Serial.print(day());
+  Serial.print(day(t));
   Serial.print(" ");
-  Serial.print(month());
+  Serial.print(month(t));
   Serial.print(" ");
-  Serial.print(year()); 
+  Serial.print(year(t)); 
   Serial.println(); 
 }
 
@@ -391,7 +391,7 @@ void ppsSvc() {
   }
   
   // Set clock(s) to UTC time if a valid fix came in since the last PPS
-  //if ( DEBUG ) digitalClockDisplay();
+  //if ( DEBUG ) digitalClockDisplay( now() );
   if ( gpsTimeValid && gpsTimeFlg ) {
     time_t oldTime = getTeensy3Time();
     setTime( gpsHr,gpsMin,gpsSec,gpsDay,gpsMon,gpsYr ); // "Library" time    
