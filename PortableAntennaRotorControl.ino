@@ -24,6 +24,11 @@ const float maxTimeTol = 0.5; // seconds
 const long maxTimeSyncAge = (long)( 0.5 + maxTimeTol / xtalTol );
 const long rotorUpdateInterval = 200000;
 const float deg2rad = 3.1415927 / 180.0;
+const float rEarth = 6.371e6; // meters
+const float deg2m = 1.124E5; // meters/deg on great circle at msl
+const float m2rad = 1.5696E-7; // radians/m on great circle at msl
+const float knots2mps = 0.51444444; // m/s
+const float ft2m = 0.3048; //  m
 /*
  * Set addresses of EEPROM parameters 
  */
@@ -64,9 +69,13 @@ char aprs[APRSLEN], aprsBuf[APRSLEN];
 int aprsIndex = 0;
 boolean aprsRdy, aprsChkFlg, aprsErrFlg, aprsBufCurrent, aprsValid;
 boolean aprsFlg, aprsNewFlg;
-long aprsTime, lastAprsTime; // standard time in seconds with decimal fraction to ms
-float aprsLat, aprsLon, aprsAlt, aprsVg, aprsHdg;
-float lastAprsAlt; // needed to keep track of prior value to calculate Vz
+float aprsLat, aprsLon, aprsVg, aprsHdg;
+double aprsAlt;
+
+// Derived aprs parameters
+double aprsTime, lastAprsTime;
+float aprsVlon, aprsVlat, aprsValt; // Derived from aprsVg, aprsHdg 
+double lastAprsAlt = -1; // needed to keep track of prior value to calculate Vz
 
 char term[TERMLEN], aprsfiBuf[APRSFILEN], cmdBuf[CMDLEN];
 int termIndex = 0;
@@ -78,12 +87,15 @@ float apfiLat, apfiLon, apfiAlt, apfiVg, apfiHdg;
 boolean targetValid;
 
 long  targetTime; 
-float targetPosX; //lon
-float targetPosY; //lat
-float targetPosZ; //alt
-float targetVelX;
-float targetVelY;
-float targetVelZ;
+float targetLon; //lon radians
+float targetLat; //lat radians
+double targetAlt; //alt meters
+float targetVlon; // rad/s
+float targetVlat; // rad/s
+float targetValt; // m/s
+
+float targetAz;
+float targetEl;
 
 Aprs aprsObj = Aprs( "WB9SKY,KC9LIG,KC9LHW" );
 
@@ -238,9 +250,13 @@ void procZDAMsg() {
     }
     if ( gpsPosValid ) {
       // Get position, velocity data
-      gpsLat = getField( gpsTF, 6, ',' ).toFloat();
+      String latStr = getField( gpsTF, 6, ',' );
+      gpsLat = latStr.substring( 0,2 ).toFloat();      
+      gpsLat = ( gpsLat + latStr.substring( 2 ).toFloat() / 60.0 ) * deg2rad;
       if ( getField( gpsTF, 7, ',' ) == 'S' ) gpsLat *= -1.0;
-      gpsLon = getField( gpsTF, 8, ',' ).toFloat();
+      String lonStr = getField( gpsTF, 8, ',' );
+      gpsLon = lonStr.substring( 0,3 ).toFloat();
+      gpsLon = ( gpsLon + lonStr.substring( 3 ).toFloat() / 60.0 ) * deg2rad;
       if ( getField( gpsTF, 9, ',' ) == 'W' ) gpsLon *= -1.0;
       gpsAlt = getField( gpsTF, 10, ',' ).toFloat();
     }
@@ -436,40 +452,62 @@ void procAprs() {
     Serial.println( "invalid" );
   }
   if ( callSgnFilt ) {
-    aprsTime = now();
-    aprsLat = aprsObj.getLatitude();
-    aprsLon = aprsObj.getLongitude();
-    aprsAlt = (float)aprsObj.getAltitude();
-    aprsVg = (float)aprsObj.getGroundspeed();
-    aprsHdg = (float)aprsObj.getCourse();
+    // Extract and convert params to m, rad, rad/s
+    aprsLat = aprsObj.getLatitude() * deg2rad;
+    aprsLon = aprsObj.getLongitude() * deg2rad;
+    aprsAlt = (double)aprsObj.getAltitude() * ft2m;
+    aprsVg = (float)aprsObj.getGroundspeed() * knots2mps * m2rad;
+    aprsHdg = (float)aprsObj.getCourse() * deg2rad;
     aprsNewFlg = true;
+
+    // Derived parameters
+    aprsVlon = aprsVg * sin( aprsHdg ) / cos( aprsLat );
+    aprsVlat = aprsVg * cos( aprsHdg );
+
+    if ( lastAprsTime == 0 ) {
+      lastAprsTime = (double)now();
+      aprsTime = lastAprsTime;
+      aprsValt = 0.0;
+    } else {
+      aprsTime = (double)now();
+      aprsValt = ( aprsAlt - lastAprsAlt ) / ( aprsTime - lastAprsTime );
+      Serial.print( "   :" );Serial.print(aprsTime);
+      Serial.print( " " );Serial.println( lastAprsTime );
+    }
+    double deltaZ = aprsAlt - lastAprsAlt;
+    double deltaT = aprsTime - lastAprsTime;
+    lastAprsTime = aprsTime;
+    lastAprsAlt = aprsAlt;
+    if ( DEBUG ) {
+      digitalClockDisplay( (long)aprsTime );
+      Serial.print("APRS: Lon Lat Alt Vg Hdg Vx Vy Vz:");
+      Serial.print( aprsLon, 4 );Serial.print(' ');
+      Serial.print( aprsLat, 4 );Serial.print(' ');
+      Serial.print( aprsAlt);Serial.print(' ');
+      Serial.print( aprsVg );Serial.print(' ');
+      Serial.print( aprsHdg );Serial.print(' ');
+      Serial.print( aprsVlon );Serial.print(' ');
+      Serial.print( aprsVlat );Serial.print(' ');
+      Serial.println( aprsValt );
+    }
+
   }
   
 }
 
 void updateTarget() {
-    // Time must be a long int, can't be float, so can't be part of target state
-    // array. Change this so that target state is just separate variables instead
-    // of an array.
+  // if a new APRS fix came in, use it as last target state
   if ( aprsNewFlg ) {
     if ( DEBUG ) Serial.println( "APRS target update" );
+    targetValid = true;
     // Set prior target state to new APRS data
     targetTime = aprsTime;
-    // Initialization for computed derivatives on first valid APRS fix
-    if ( targetValid ) {
-      targetVelZ = ( aprsAlt - lastAprsAlt ) / ( aprsTime - lastAprsTime );
-    } else {
-      targetVelZ = 0.0;
-      targetValid = true;
-    }
-    targetPosX = aprsLon;
-    targetPosY = aprsLat;
-    targetPosZ = aprsAlt;
-    targetVelX = aprsVg * cos( aprsHdg * deg2rad ) * cos( aprsLat * deg2rad );
-    targetVelY = aprsVg * sin( aprsHdg * deg2rad );
-    targetVelZ = ( aprsAlt - lastAprsAlt ) / ( targetTime - lastAprsTime );
-    lastAprsTime = targetTime;
-    lastAprsAlt = aprsAlt;
+    targetLon = aprsLon;
+    targetLat = aprsLat;
+    targetAlt = aprsAlt;
+    targetVlon = aprsVlon;
+    targetVlat = aprsVlat;
+    targetValt = aprsValt;
     aprsNewFlg = false;
   }
 
@@ -478,9 +516,9 @@ void updateTarget() {
     long temp = targetTime; // old time, same as lastAprsTime??
     targetTime = now(); 
     temp = targetTime - temp; // delta t
-    targetPosX += ( targetVelX * temp );
-    targetPosY += ( targetVelY * temp );
-    targetPosZ += ( targetVelZ * temp );
+    targetLon += ( targetVlon * deltaT );
+    targetLat += ( targetVlat * deltaT );
+    targetAlt += ( targetValt * deltaT );
   }
 
   //FOR DEBUG PURPOSES
