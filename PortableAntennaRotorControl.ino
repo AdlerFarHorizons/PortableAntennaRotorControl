@@ -12,6 +12,7 @@
 #define CMDLEN TERMLEN
 #define APRSFILEN TERMLEN
 #define DEBUG true
+#define TEST true
 
 
 const int elDrvPin = 16;
@@ -40,6 +41,13 @@ const int eeaddrAzPotMin = eeaddrAzPotWest + sizeof( int );
 const int eeaddrAzPotMax = eeaddrAzPotMin + sizeof( int );
 const int eeaddrElPot0 = eeaddrAzPotMax + sizeof( int );
 const int eeaddrElPot90 = eeaddrElPot0 + sizeof( int );
+
+/*
+ * Parameters to use with TEST enabled
+ */
+const float testLat = 41.09 * deg2rad;
+const float testLon = -87.9167100 * deg2rad;
+const float testAlt = 434.3;
 
  /*
  * Copernicus II configured for two NMEA sentences every 60 seconds:
@@ -142,6 +150,12 @@ void setup() {
   attachInterrupt( ppsPin, ppsSvc, RISING );
 //  rotorDriveUpdate.priority( 64 ); // Default is 128, lower is higher
 //  rotorDriveUpdate.begin( rotorSvc, rotorUpdateInterval );
+
+  if ( TEST ) {
+    gpsLat = testLat;
+    gpsLon = testLon;
+    gpsAlt = testAlt;
+  }
 }
 
 void loop() {
@@ -197,6 +211,7 @@ void getGPSByte() {
 }
 
 void updateGPSMsg() {
+  Serial.println( "GPS msg rcvd" );
   String str = String( gps );
   int i;
   
@@ -227,6 +242,7 @@ void updateGPSMsg() {
 }
 
 void procZDAMsg() {
+  Serial.println( gpsZDA );
     String utc = getField( gpsZDA, 1, ',' );
     gpsHr = utc.substring( 0,2 ).toInt();
     gpsMin = utc.substring( 2,4 ).toInt();
@@ -402,12 +418,14 @@ void printDigits(int digits){
 }
 
 void ppsSvc() {
+  long tmpMicros;
   if ( DEBUG ) {
-    //Serial.print( "." );
+    tmpMicros = micros();
+    Serial.print( "." );
   }
   
   // Set clock(s) to UTC time if a valid fix came in since the last PPS
-  //if ( DEBUG ) digitalClockDisplay( now() );
+  if ( DEBUG ) digitalClockDisplay( now() );
   if ( gpsTimeValid && gpsTimeFlg ) {
     time_t oldTime = getTeensy3Time();
     setTime( gpsHr,gpsMin,gpsSec,gpsDay,gpsMon,gpsYr ); // "Library" time    
@@ -431,9 +449,11 @@ void ppsSvc() {
   gpsTimeFlg = false;
   gpsZDAFlg = false;
   gpsTFFlg = false;
-
   updateTarget();
-
+  if ( DEBUG ) {
+    Serial.print( "ISR duration: " );
+    Serial.print( micros() - tmpMicros );
+  }
 }
 
 void procAprs() {
