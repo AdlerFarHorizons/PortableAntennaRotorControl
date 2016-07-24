@@ -166,8 +166,8 @@ void loop() {
   if ( gpsMsgFlg ) updateGPSMsg();
   if ( gpsZDAFlg ) procZDAMsg();
   if ( gpsTFFlg ) procTFMsg();
-  if ( !cmdBufCurrent ) updateCmdBuffer();
-  if ( Serial.available() ) getTermByte();
+//  if ( !cmdBufCurrent ) updateCmdBuffer();
+//  if ( Serial.available() ) getTermByte();
   if ( Serial1.available() ) getAPRSByte();
   if ( Serial2.available() ) getGPSByte();
   if ( !aprsBufCurrent ) updateAPRSBuffer();
@@ -246,16 +246,18 @@ void updateGPSMsg() {
 
 void procZDAMsg() {
   Serial.println( gpsZDA );
-    String utc = getField( gpsZDA, 1, ',' );
+  String utc = getField( gpsZDA, 1, ',' );
+  if ( utc.length() > 0 ) {
     gpsHr = utc.substring( 0,2 ).toInt();
     gpsMin = utc.substring( 2,4 ).toInt();
     gpsSec = utc.substring( 4,6 ).toInt();
     gpsDay = getField( gpsZDA, 2, ',' ).toInt();
     gpsMon = getField( gpsZDA, 3, ',' ).toInt();
     gpsYr = getField( gpsZDA, 4, ',' ).toInt();
-    gpsZDAFlg = false;
     gpsTimeFlg = true;
   }
+  gpsZDAFlg = false;
+}
 
  void procTFMsg() {
     // Need UTC offset with at least 2D fix for valid time sync
@@ -536,11 +538,11 @@ void updateTarget() {
     aprsNewFlg = false;
   }
 
-  // Update target state 
-  if ( targetValid ) {
-    long temp = targetTime; // old time, same as lastAprsTime??
-    targetTime = now(); 
-    temp = targetTime - temp; // delta t
+  // Update target state if minimum time resolution interval has passed
+  double tmpTime = (double)now();
+  if ( targetValid && tmpTime > targetTime ) {
+    long deltaT = tmpTime - targetTime;
+    targetTime = tmpTime; 
     targetLon += ( targetVlon * deltaT );
     targetLat += ( targetVlat * deltaT );
     targetAlt += ( targetValt * deltaT );
