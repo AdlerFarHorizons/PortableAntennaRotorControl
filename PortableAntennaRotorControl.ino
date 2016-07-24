@@ -548,16 +548,65 @@ void updateTarget() {
     targetAlt += ( targetValt * deltaT );
   }
 
-  //FOR DEBUG PURPOSES
-  Serial.println(targetPosX);
-  Serial.println(targetPosY);
-  Serial.println(targetPosZ);
-  Serial.println(targetVelX);
-  Serial.println(targetVelY);
-  Serial.println(targetVelZ);
-  Serial.println(lastAprsTime);
-  Serial.println(targetTime);
-  
+  // Update AZ and EL angles
+  targetAz = azimuthAngle( gpsLon, gpsLat, targetLon, targetLat );
+  targetEl = elevationAngle( gpsLon, gpsLat, gpsAlt, 
+                             targetLon, targetLat, targetAlt );
+
+  if ( DEBUG ) {
+    digitalClockDisplay( (long)targetTime );
+    Serial.print(" Local: Lon Lat Alt: ");
+    Serial.print( gpsLon, 8 );Serial.print(' ');
+    Serial.print( gpsLat, 8 );Serial.print(' ');
+    Serial.println( gpsAlt );
+    Serial.print("Target: Lon Lat Alt: ");
+    Serial.print( targetLon, 8 );Serial.print(' ');
+    Serial.print( targetLat, 8 );Serial.print(' ');
+    Serial.println( targetAlt );
+    Serial.print( "Target: Az El: " );
+    Serial.print( targetAz / deg2rad );Serial.print(' ');
+    Serial.println( targetEl / deg2rad );
+  }
 }
 
+/*
+ * Azimuth and Elevation functions take Latitude, Longitude and
+ * Altitude of reference (1) and target (2) as arguments
+ * 
+ * lonX = Longitude (radians) of reference (X=1) or target (X=2) position
+ * latX = Latitude (radians) of reference (X=1) or target (X=2) position
+ * zX = Altitude (meters) of reference (X=1) or target (X=2) position
+ * 
+ * Returns angle in radians.
+ * 
+ * Note that elevantionAngle casts arguments as doubles as this (exact) 
+ * calcuation requires the highest precision.
+ */
+
+float elevationAngle( double lon1, double lat1, double z1, 
+                      double lon2, double lat2, double z2 ) {
+
+  // ECEF radii to 1st and 2nd points
+  double a = z1 + rEarth;
+  double b = z2 + rEarth;
+
+  // Central angle
+  double gamma = acos( sin(lat1) * sin(lat2) + 
+                 cos(lat1) * cos(lat2) * cos(lon2-lon1) );
+
+  // Linear distance between points (triangle side opposite gamma)
+  double c = sqrt( a*a + b*b - 2 * a * b * cos( gamma ) );
+
+  // Elevation angle is angle at location (beta) minus 90 degrees
+  return acos( 0.5 * ( -b*b + c*c + a*a ) / a / c ) - PI / 2.0;
+}
+
+float azimuthAngle( float lon1, float lat1, float lon2, float lat2 ) {
+
+  return atan2( cos( lat1 ) * sin( lat2 ) 
+              - sin( lat1 ) * cos( lat2 ) * cos( lon2 - lon1 ),
+                sin( lon2 - lon1 ) * cos( lat2 ) );
+
+
+}
 
