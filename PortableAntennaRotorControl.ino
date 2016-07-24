@@ -125,22 +125,25 @@ void setup() {
   cmdRdy = false;
   cmdBufCurrent = true;
   setSyncProvider( getTeensy3Time );
+  delay( 5000 ); //Wait for GPS to power up.
   Serial.begin( 115200 ); // Monitor and aprs.fi packets
   Serial1.begin( 9600 ); // APRS
   Serial2.begin( 9600 ); // GPS
-  while( !Serial || !Serial1 || !Serial2 );
-  delay( 1000 ); //Wait for GPS to power up.
-  // Clear out GPS receive buffer
+  delay( 100 ); // Give time for serial TX line to bias up
+ // Clear out serial receive buffers
+  while( Serial.available() ) Serial.read();
+  while( Serial1.available() ) Serial1.read();
   while( Serial2.available() ) Serial2.read();
   // Send GPS Configuration messages
   gpsConfig();
-  delay( 1000 );
-  // Get GPS response 
+  // Get GPS response
+  delay( 200 );
+  Serial.println( "waiting for GPS response..." );
   while( Serial2.available() ) {
     Serial.write( Serial2.read() ); 
   }
-  Serial.println( "" );
-  
+  Serial.println( "got it." );
+
   /*
    * Sync library time to RTC. Default is 5 minutes.
    * This is too long.
@@ -466,10 +469,12 @@ void procAprs() {
     callSgnFilt |= ( (String)callSgns[i] == callSgn );
   }
   if ( DEBUG ) Serial.print( "\n" + callSgn + ' ');
-  if ( DEBUG ) if ( callSgnFilt ) {
-    Serial.println( "valid" );
-  } else {
-    Serial.println( "invalid" );
+  if ( DEBUG ) {
+    if ( callSgnFilt ) {
+      Serial.println( "valid" );
+    } else {
+      Serial.println( "invalid" );
+    }
   }
   if ( callSgnFilt ) {
     // Extract and convert params to m, rad, rad/s
