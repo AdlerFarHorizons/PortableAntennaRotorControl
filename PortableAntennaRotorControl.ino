@@ -30,6 +30,11 @@ const float deg2m = 1.124E5; // meters/deg on great circle at msl
 const float m2rad = 1.5696E-7; // radians/m on great circle at msl
 const float knots2mps = 0.51444444; // m/s
 const float ft2m = 0.3048; //  m
+
+const float azSlewLimit = 5.0 * deg2rad;
+const float elSlewLimit = 5.0 * deg2rad;
+
+
 /*
  * Set addresses of EEPROM parameters 
  */
@@ -151,8 +156,8 @@ void setup() {
   setSyncInterval( 10 );
   
   attachInterrupt( ppsPin, ppsSvc, RISING );
-//  rotorDriveUpdate.priority( 64 ); // Default is 128, lower is higher
-//  rotorDriveUpdate.begin( rotorSvc, rotorUpdateInterval );
+  rotorDriveUpdate.priority( 64 ); // Default is 128, lower is higher
+  rotorDriveUpdate.begin( rotorSvc, rotorUpdateInterval );
 
   if ( TEST ) {
     gpsLat = testLat;
@@ -423,6 +428,7 @@ void printDigits(int digits){
 }
 
 void ppsSvc() {
+  
   long tmpMicros;
   if ( DEBUG ) {
     tmpMicros = micros();
@@ -608,5 +614,25 @@ float azimuthAngle( float lon1, float lat1, float lon2, float lat2 ) {
                 sin( lon2 - lon1 ) * cos( lat2 ) );
 
 
+}
+
+float measureAz() {
+
+  return 0.0;
+  
+}
+
+float measureEl() {
+
+  return 0.0;
+  
+}
+
+void rotorSvc() {
+  float deltaAz = targetAz - measureAz();
+  float deltaEl = targetEl - measureEl();
+  boolean isSlewingAz = abs( deltaAz ) > azSlewLimit;
+  boolean isSlewingEl = abs( deltaEl ) > elSlewLimit;
+  
 }
 
