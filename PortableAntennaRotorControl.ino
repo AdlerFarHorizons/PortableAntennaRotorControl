@@ -5,7 +5,7 @@
 
 #include <TimeLib.h>
 #include <EEPROM.h>
-#include "Aprs/Aprs.h"
+#include <Aprs.h>
 #define GPSLEN 100 //max length of GPS output to be sent
 #define APRSLEN 100 // max length of APRS message packet
 #define TERMLEN 100 // max length of terminal message
