@@ -123,13 +123,12 @@ void loop()
   intFlag=false;
   
   // Display time
-  Serial.print (millis()-ti,DEC);
+  //Serial.print (millis()-ti,DEC);
 
-  Serial.print( "\tACC:" );
   accelerometer_subr();
-  Serial.print( "\tMAG:" );
+  Serial.print( "," );
   subr_magnetometer();
-  Serial.print( "\tGYR:" );
+  Serial.print( "," );
   gyro_subr();
   Serial.println( "" );
   
@@ -165,7 +164,6 @@ void loop()
     Serial.print (ay,DEC);
     Serial.print (",");
     Serial.print (az,DEC);  
-    Serial.print (",");
   }
 
 
@@ -185,7 +183,6 @@ void loop()
     Serial.print (gy,DEC);
     Serial.print (",");
     Serial.print (gz,DEC);  
-    Serial.print (",");
 
   }
   // _____________________
@@ -219,7 +216,6 @@ void loop()
     Serial.print (my,DEC);//(my-70,DEC);
     Serial.print (",");
     Serial.print (mz,DEC);//(mz-700,DEC);  
-    Serial.print (",");
   
   }
   
