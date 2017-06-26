@@ -29,7 +29,8 @@
 #define    ACC_FULL_SCALE_8_G        0x10
 #define    ACC_FULL_SCALE_16_G       0x18
 
-
+boolean cmdPending;
+String cmdStr;
 
 // This function read Nbytes bytes from I2C device at address Address. 
 // Put read bytes starting at register Register in the Data array. 
@@ -88,16 +89,14 @@ void setup()
   I2CwriteByte(MAG_ADDRESS,0x0A,0x16);
   
    pinMode(13, OUTPUT);
-  Timer1.initialize(1000000);         // initialize timer1, and set a 1/2 second period
-  Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
-  
+  //Timer1.initialize(1000000);         // initialize timer1, and set a 1/2 second period
+  //Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
+
+  cmdPending = false;
   
   // Store initial time
   ti=millis();
 }
-
-
-
 
 
 // Counter
@@ -109,7 +108,6 @@ int16_t gx, gy, gz;
 int16_t mx, my, mz;
 uint8_t Mag[7]; 
 
-
 void callback()
 { 
   intFlag=true;
@@ -119,34 +117,28 @@ void callback()
 // Main loop, read and display data
 void loop()
 {
-  while (!intFlag);
-  intFlag=false;
-  
-  // Display time
-  //Serial.print (millis()-ti,DEC);
+  //while (!intFlag);
+  //intFlag=false;
 
+  if ( Serial.available() ) getInByte();
+  if ( cmdPending ) processCmd();
+  
+}
+
+void processCmd() {
+  if ( cmdStr == "read" ) getReadings();
+  cmdPending = false;
+  cmdStr = "";
+}
+
+void getReadings() {
   accelerometer_subr();
   Serial.print( "," );
   subr_magnetometer();
   Serial.print( "," );
   gyro_subr();
   Serial.println( "" );
-  
-  // _______________
-  // ::: Counter :::
-  
-  // Display data counter
-//  Serial.print (cpt++,DEC);
-//  Serial.print ("\t");
-  
-  // End of line
-  //Serial.println("");
-  //delay(500);  
- 
-  // ____________________________________
-  // :::  accelerometer and gyroscope ::: 
 }
-  
 
   void accelerometer_subr()
   {
@@ -218,7 +210,17 @@ void loop()
     Serial.print (mz,DEC);//(mz-700,DEC);  
   
   }
-  
+
+void getInByte() {
+  char inByte = Serial.read();
+  if ( !cmdPending ) {
+    if ( inByte == '\r' || inByte == '\n' ) {
+      cmdPending = true;
+    } else {
+      cmdStr += inByte;
+    }
+  }
+}
    
 
 
