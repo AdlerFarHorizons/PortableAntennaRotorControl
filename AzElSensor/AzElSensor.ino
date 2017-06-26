@@ -9,8 +9,11 @@
  * http://www.lucidarme.me/?p=5057
  * 
 */
+// 6/24/17 Lou: Changed to simple on-demand CSV output of Acc,Mag,Gyro on "read" input
+//              command. Also re-arranged and re-formatted code.
 
-// 4/15 changes by Ellie:  starting line 129, I made subroutines to read/print accel and gyro data
+// 4/15 changes by Ellie:  starting line 129, I made subroutines to read/print accel
+//                         and gyro data
 
 
 #include <Wire.h>
@@ -28,6 +31,8 @@ const byte ACC_FULL_SCALE_2_G = 0x00;
 const byte ACC_FULL_SCALE_4_G = 0x08;
 const byte ACC_FULL_SCALE_8_G = 0x10;
 const byte ACC_FULL_SCALE_16_G = 0x18;
+
+const int ledPin = 13;
 
 uint8_t Buf[6];
 int16_t ax, ay, az;
@@ -82,12 +87,14 @@ void processCmd() {
 
 void getReadings() {
 
+  digitalWrite( ledPin, HIGH );
   accelerometer();
   Serial.print( "," );
   magnetometer();
   Serial.print( "," );
   gyro();
   Serial.println( "" );
+  digitalWrite( ledPin, LOW );
 
 }
 
