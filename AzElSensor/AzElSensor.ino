@@ -88,7 +88,7 @@ void setup()
   I2CwriteByte(MAG_ADDRESS,0x0A,0x16);
   
    pinMode(13, OUTPUT);
-  Timer1.initialize(100000);         // initialize timer1, and set a 1/2 second period
+  Timer1.initialize(1000000);         // initialize timer1, and set a 1/2 second period
   Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
   
   
@@ -124,8 +124,14 @@ void loop()
   
   // Display time
   Serial.print (millis()-ti,DEC);
-  Serial.print ("\t");
 
+  Serial.print( "\tACC:" );
+  accelerometer_subr();
+  Serial.print( "\tMAG:" );
+  subr_magnetometer();
+  Serial.print( "\tGYR:" );
+  gyro_subr();
+  Serial.println( "" );
   
   // _______________
   // ::: Counter :::
@@ -135,8 +141,8 @@ void loop()
 //  Serial.print ("\t");
   
   // End of line
-  Serial.println("");
-  delay(500);  
+  //Serial.println("");
+  //delay(500);  
  
   // ____________________________________
   // :::  accelerometer and gyroscope ::: 
@@ -155,11 +161,11 @@ void loop()
 
   //print accelerometer data  
     Serial.print (ax,DEC); 
-    Serial.print ("\t");
+    Serial.print (",");
     Serial.print (ay,DEC);
-    Serial.print ("\t");
+    Serial.print (",");
     Serial.print (az,DEC);  
-    Serial.print ("\t");
+    Serial.print (",");
   }
 
 
@@ -175,11 +181,11 @@ void loop()
   
   // print gyroscope data
     Serial.print (gx,DEC); 
-    Serial.print ("\t");
+    Serial.print (",");
     Serial.print (gy,DEC);
-    Serial.print ("\t");
+    Serial.print (",");
     Serial.print (gz,DEC);  
-    Serial.print ("\t");
+    Serial.print (",");
 
   }
   // _____________________
@@ -209,11 +215,11 @@ void loop()
   
   // print magnetometer data
     Serial.print (mx,DEC);//(mx+200,DEC); 
-    Serial.print ("\t");
+    Serial.print (",");
     Serial.print (my,DEC);//(my-70,DEC);
-    Serial.print ("\t");
+    Serial.print (",");
     Serial.print (mz,DEC);//(mz-700,DEC);  
-    Serial.print ("\t");
+    Serial.print (",");
   
   }
   
