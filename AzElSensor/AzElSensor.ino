@@ -16,59 +16,30 @@
 #include <Wire.h>
 #include <TimerOne.h>
 
-#define    MPU9250_ADDRESS            0x68
-#define    MAG_ADDRESS                0x0C
+const byte MPU9250_ADDRESS = 0x68;
+const byte MAG_ADDRESS = 0x0C;
 
-#define    GYRO_FULL_SCALE_250_DPS    0x00  
-#define    GYRO_FULL_SCALE_500_DPS    0x08
-#define    GYRO_FULL_SCALE_1000_DPS   0x10
-#define    GYRO_FULL_SCALE_2000_DPS   0x18
+const byte GYRO_FULL_SCALE_250_DPS = 0x00;
+const byte GYRO_FULL_SCALE_500_DPS = 0x08;
+const byte GYRO_FULL_SCALE_1000_DPS = 0x10;
+const byte GYRO_FULL_SCALE_2000_DPS = 0x18;
 
-#define    ACC_FULL_SCALE_2_G        0x00  
-#define    ACC_FULL_SCALE_4_G        0x08
-#define    ACC_FULL_SCALE_8_G        0x10
-#define    ACC_FULL_SCALE_16_G       0x18
+const byte ACC_FULL_SCALE_2_G = 0x00;
+const byte ACC_FULL_SCALE_4_G = 0x08;
+const byte ACC_FULL_SCALE_8_G = 0x10;
+const byte ACC_FULL_SCALE_16_G = 0x18;
+
+uint8_t Buf[6];
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+int16_t mx, my, mz;
+uint8_t Mag[7];
 
 boolean cmdPending;
 String cmdStr;
 
-// This function read Nbytes bytes from I2C device at address Address. 
-// Put read bytes starting at register Register in the Data array. 
-void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)
-{
-  // Set register address
-  Wire.beginTransmission(Address);
-  Wire.write(Register);
-  Wire.endTransmission();
-  
-  // Read Nbytes
-  Wire.requestFrom(Address, Nbytes); 
-  uint8_t index=0;
-  while (Wire.available())
-    Data[index++]=Wire.read();
-}
+void setup() {
 
-
-// Write a byte (Data) in device (Address) at register (Register)
-void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
-{
-  // Set register address
-  Wire.beginTransmission(Address);
-  Wire.write(Register);
-  Wire.write(Data);
-  Wire.endTransmission();
-}
-
-
-
-// Initial time
-long int ti;
-volatile bool intFlag=false;
-
-// Initializations
-void setup()
-{
-  // Arduino initializations
   Wire.begin();
   Serial.begin(9600);
   
@@ -88,37 +59,13 @@ void setup()
   // Request continuous magnetometer measurements in 16 bits
   I2CwriteByte(MAG_ADDRESS,0x0A,0x16);
   
-   pinMode(13, OUTPUT);
-  //Timer1.initialize(1000000);         // initialize timer1, and set a 1/2 second period
-  //Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
+  pinMode(13, OUTPUT);
 
   cmdPending = false;
   
-  // Store initial time
-  ti=millis();
 }
 
-
-// Counter
-long int cpt=0;
-
-uint8_t Buf[6];
-int16_t ax, ay, az;
-int16_t gx, gy, gz;
-int16_t mx, my, mz;
-uint8_t Mag[7]; 
-
-void callback()
-{ 
-  intFlag=true;
-  digitalWrite(13, digitalRead(13) ^ 1);
-}
-
-// Main loop, read and display data
-void loop()
-{
-  //while (!intFlag);
-  //intFlag=false;
+void loop() {
 
   if ( Serial.available() ) getInByte();
   if ( cmdPending ) processCmd();
@@ -126,90 +73,87 @@ void loop()
 }
 
 void processCmd() {
+
   if ( cmdStr == "read" ) getReadings();
   cmdPending = false;
   cmdStr = "";
+
 }
 
 void getReadings() {
-  accelerometer_subr();
+
+  accelerometer();
   Serial.print( "," );
-  subr_magnetometer();
+  magnetometer();
   Serial.print( "," );
-  gyro_subr();
+  gyro();
   Serial.println( "" );
+
 }
 
-  void accelerometer_subr()
-  {
- // Read accelerometer data  
-    I2Cread(MPU9250_ADDRESS,0x3B,6,Buf);
-  
+void accelerometer() {
+
+  // Read accelerometer data  
+  I2Cread(MPU9250_ADDRESS,0x3B,6,Buf);
+
   // Create 16 bits values from 8 bits data
-    ax=-(Buf[0]<<8 | Buf[1]);
-    ay=-(Buf[2]<<8 | Buf[3]);
-    az=Buf[4]<<8 | Buf[5];
+  ax=-(Buf[0]<<8 | Buf[1]);
+  ay=-(Buf[2]<<8 | Buf[3]);
+  az=Buf[4]<<8 | Buf[5];
 
   //print accelerometer data  
-    Serial.print (ax,DEC); 
-    Serial.print (",");
-    Serial.print (ay,DEC);
-    Serial.print (",");
-    Serial.print (az,DEC);  
-  }
+  Serial.print (ax,DEC); 
+  Serial.print (",");
+  Serial.print (ay,DEC);
+  Serial.print (",");
+  Serial.print (az,DEC);  
 
+}
 
-  void gyro_subr()
-  {
-  // Read gyroscope data
-    I2Cread(MPU9250_ADDRESS,0x43,6,Buf);
+void gyro() {
+
+// Read gyroscope data
+  I2Cread(MPU9250_ADDRESS,0x43,6,Buf);
+
+// Create 16 bits values from 8 bits data
+  int16_t gx=-(Buf[0]<<8 | Buf[1]);
+  int16_t gy=-(Buf[2]<<8 | Buf[3]);
+  int16_t gz=Buf[4]<<8 | Buf[5];
+
+// print gyroscope data
+  Serial.print (gx,DEC); 
+  Serial.print (",");
+  Serial.print (gy,DEC);
+  Serial.print (",");
+  Serial.print (gz,DEC);  
+
+}
   
-  // Create 16 bits values from 8 bits data
-    int16_t gx=-(Buf[0]<<8 | Buf[1]);
-    int16_t gy=-(Buf[2]<<8 | Buf[3]);
-    int16_t gz=Buf[4]<<8 | Buf[5];
-  
-  // print gyroscope data
-    Serial.print (gx,DEC); 
-    Serial.print (",");
-    Serial.print (gy,DEC);
-    Serial.print (",");
-    Serial.print (gz,DEC);  
+void magnetometer() {
 
-  }
-  // _____________________
-  // :::  Magnetometer ::: 
-
-  
-  // Read register Status 1 and wait for the DRDY: Data Ready
-
-  void subr_magnetometer()
-  {
-
+// Read register Status 1 and wait for the DRDY: Data Ready
   uint8_t ST1;
-  do
-  {
+  
+  do {
     I2Cread(MAG_ADDRESS,0x02,1,&ST1);
-  }
-  while (!(ST1&0x01));
+  } while (!(ST1&0x01));
+  
+// Read magnetometer data   
+  I2Cread(MAG_ADDRESS,0x03,7,Mag);
 
-  // Read magnetometer data   
-    I2Cread(MAG_ADDRESS,0x03,7,Mag);
-  
-  // Create 16 bits values from 8 bits data
-    mx=-(Mag[3]<<8 | Mag[2]);
-    my=-(Mag[1]<<8 | Mag[0]);
-    mz=-(Mag[5]<<8 | Mag[4]);
-  
-  
-  // print magnetometer data
-    Serial.print (mx,DEC);//(mx+200,DEC); 
-    Serial.print (",");
-    Serial.print (my,DEC);//(my-70,DEC);
-    Serial.print (",");
-    Serial.print (mz,DEC);//(mz-700,DEC);  
-  
-  }
+// Create 16 bits values from 8 bits data
+  mx=-(Mag[3]<<8 | Mag[2]);
+  my=-(Mag[1]<<8 | Mag[0]);
+  mz=-(Mag[5]<<8 | Mag[4]);
+
+// print magnetometer data
+  Serial.print (mx,DEC);//(mx+200,DEC); 
+  Serial.print (",");
+  Serial.print (my,DEC);//(my-70,DEC);
+  Serial.print (",");
+  Serial.print (mz,DEC);//(mz-700,DEC);  
+
+}
 
 void getInByte() {
   char inByte = Serial.read();
@@ -221,6 +165,33 @@ void getInByte() {
     }
   }
 }
+
+// This function read Nbytes bytes from I2C device at address Address. 
+// Put read bytes starting at register Register in the Data array. 
+void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)
+{
+  // Set register address
+  Wire.beginTransmission(Address);
+  Wire.write(Register);
+  Wire.endTransmission();
+  
+  // Read Nbytes
+  Wire.requestFrom(Address, Nbytes); 
+  uint8_t index=0;
+  while (Wire.available())
+    Data[index++]=Wire.read();
+}
+
+// Write a byte (Data) in device (Address) at register (Register)
+void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data) {
+  // Set register address
+  Wire.beginTransmission(Address);
+  Wire.write(Register);
+  Wire.write(Data);
+  Wire.endTransmission();
+}
+
+
    
 
 
