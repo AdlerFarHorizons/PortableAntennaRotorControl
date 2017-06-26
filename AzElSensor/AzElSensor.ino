@@ -10,6 +10,9 @@
  * 
 */
 
+// 4/15 changes by Ellie:  starting line 129, I made subroutines to read/print accel and gyro data
+
+
 #include <Wire.h>
 #include <TimerOne.h>
 
@@ -66,7 +69,7 @@ void setup()
 {
   // Arduino initializations
   Wire.begin();
-  Serial.begin(115200);
+  Serial.begin(9600);
   
   // Set accelerometers low pass filter at 5Hz
   I2CwriteByte(MPU9250_ADDRESS,29,0x06);
@@ -84,8 +87,8 @@ void setup()
   // Request continuous magnetometer measurements in 16 bits
   I2CwriteByte(MAG_ADDRESS,0x0A,0x16);
   
-  pinMode(13, OUTPUT);
-  Timer1.initialize(10000);         // initialize timer1, and set a 1/2 second period
+   pinMode(13, OUTPUT);
+  Timer1.initialize(100000);         // initialize timer1, and set a 1/2 second period
   Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
   
   
@@ -100,6 +103,13 @@ void setup()
 // Counter
 long int cpt=0;
 
+uint8_t Buf[6];
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+int16_t mx, my, mz;
+uint8_t Mag[7]; 
+
+
 void callback()
 { 
   intFlag=true;
@@ -113,8 +123,7 @@ void loop()
   intFlag=false;
   
   // Display time
-  //Serial.print (millis()-ti,DEC);
-  Serial.print (String("time: ")+String(millis()-ti));
+  Serial.print (millis()-ti,DEC);
   Serial.print ("\t");
 
   
@@ -125,54 +134,63 @@ void loop()
 //  Serial.print (cpt++,DEC);
 //  Serial.print ("\t");
   
- 
+  // End of line
+  Serial.println("");
+  delay(500);  
  
   // ____________________________________
   // :::  accelerometer and gyroscope ::: 
+}
+  
 
-  // Read accelerometer and gyroscope
-  uint8_t Buf[14];
-  I2Cread(MPU9250_ADDRESS,0x3B,14,Buf);
+  void accelerometer_subr()
+  {
+ // Read accelerometer data  
+    I2Cread(MPU9250_ADDRESS,0x3B,6,Buf);
   
   // Create 16 bits values from 8 bits data
-  
-  // Accelerometer
-  int16_t ax=-(Buf[0]<<8 | Buf[1]);
-  int16_t ay=-(Buf[2]<<8 | Buf[3]);
-  int16_t az=Buf[4]<<8 | Buf[5];
+    ax=-(Buf[0]<<8 | Buf[1]);
+    ay=-(Buf[2]<<8 | Buf[3]);
+    az=Buf[4]<<8 | Buf[5];
 
-  // Gyroscope
-  int16_t gx=-(Buf[8]<<8 | Buf[9]);
-  int16_t gy=-(Buf[10]<<8 | Buf[11]);
-  int16_t gz=Buf[12]<<8 | Buf[13];
-  
-    // Display values
-  
-  // Accelerometer
-  Serial.print("Accel: ");
-  Serial.print (ax,DEC); 
-  Serial.print ("\t");
-  Serial.print (ay,DEC);
-  Serial.print ("\t");
-  Serial.print (az,DEC);  
-  Serial.print ("\t");
-  
-  // Gyroscope
-  Serial.print("Gyro: ");
-  Serial.print (gx,DEC); 
-  Serial.print ("\t");
-  Serial.print (gy,DEC);
-  Serial.print ("\t");
-  Serial.print (gz,DEC);  
-  Serial.print ("\t");
+  //print accelerometer data  
+    Serial.print (ax,DEC); 
+    Serial.print ("\t");
+    Serial.print (ay,DEC);
+    Serial.print ("\t");
+    Serial.print (az,DEC);  
+    Serial.print ("\t");
+  }
 
+
+  void gyro_subr()
+  {
+  // Read gyroscope data
+    I2Cread(MPU9250_ADDRESS,0x43,6,Buf);
   
+  // Create 16 bits values from 8 bits data
+    int16_t gx=-(Buf[0]<<8 | Buf[1]);
+    int16_t gy=-(Buf[2]<<8 | Buf[3]);
+    int16_t gz=Buf[4]<<8 | Buf[5];
+  
+  // print gyroscope data
+    Serial.print (gx,DEC); 
+    Serial.print ("\t");
+    Serial.print (gy,DEC);
+    Serial.print ("\t");
+    Serial.print (gz,DEC);  
+    Serial.print ("\t");
+
+  }
   // _____________________
   // :::  Magnetometer ::: 
 
   
   // Read register Status 1 and wait for the DRDY: Data Ready
-  
+
+  void subr_magnetometer()
+  {
+
   uint8_t ST1;
   do
   {
@@ -180,32 +198,33 @@ void loop()
   }
   while (!(ST1&0x01));
 
-  // Read magnetometer data  
-  uint8_t Mag[7];  
-  I2Cread(MAG_ADDRESS,0x03,7,Mag);
+  // Read magnetometer data   
+    I2Cread(MAG_ADDRESS,0x03,7,Mag);
   
-
   // Create 16 bits values from 8 bits data
-  
-  // Magnetometer
-  int16_t mx=-(Mag[3]<<8 | Mag[2]);
-  int16_t my=-(Mag[1]<<8 | Mag[0]);
-  int16_t mz=-(Mag[5]<<8 | Mag[4]);
+    mx=-(Mag[3]<<8 | Mag[2]);
+    my=-(Mag[1]<<8 | Mag[0]);
+    mz=-(Mag[5]<<8 | Mag[4]);
   
   
-  // Magnetometer
-  Serial.print("Compass: ");
-  Serial.print (mx+200,DEC); 
-  Serial.print ("\t");
-  Serial.print (my-70,DEC);
-  Serial.print ("\t");
-  Serial.print (mz-700,DEC);  
-  Serial.print ("\t");
+  // print magnetometer data
+    Serial.print (mx,DEC);//(mx+200,DEC); 
+    Serial.print ("\t");
+    Serial.print (my,DEC);//(my-70,DEC);
+    Serial.print ("\t");
+    Serial.print (mz,DEC);//(mz-700,DEC);  
+    Serial.print ("\t");
   
+  }
   
-  
-  // End of line
-  Serial.println("");
-  Serial.flush();
-  
-}
+   
+
+
+
+
+
+
+
+
+
+
